@@ -1,0 +1,14 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb2
+    ports:
+      - "27007:27017"
+    volumes:
+      - "./mongodb:/var/lib/docker/volumes"
+    networks:
+      - backend
+    tty: true
+
+networks:
+  backend: {}
