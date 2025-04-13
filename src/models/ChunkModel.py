@@ -1,0 +1,39 @@
+from .BaseDataModel import BaseDataModel 
+from .db_schemas import data_chunk 
+from .enums.DB_enums import DB_enums 
+from bson.objectid import ObjectId
+from pymongo import InsertOne
+
+class ChunkModel(BaseDataModel):
+
+    def __init__(self, db_client: object):
+        super().__init__(db_client=db_client)
+        self.collection = self.db_client[DB_enums.COLLECTION_CHUNK_NAME.value]
+
+        async def create_chunk(self, chunk: data_chunk):
+            result = await self.collection.insert_one(chunk.model_dump())
+            chunk._id = result.inserted_id
+            return chunk
+        
+        async def get_chunk(self, chunk_id: str):
+            result = await self.collection.find_one({
+                "_id" : ObjectId(chunk_id)
+            })
+
+            if result is None : return None
+
+            return data_chunk(**result)
+        
+        async def insert_many_chunks(self, chunks: list, batch_size=100):
+
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i:i+batch_size]
+
+                operations = [(
+                    InsertOne(chunk.model_dump()))
+                    for chunk in batch
+                ]
+
+                await self.collection.bulk_write(operations)
+
+            return len(chunks)
