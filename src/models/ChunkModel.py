@@ -10,30 +10,37 @@ class ChunkModel(BaseDataModel):
         super().__init__(db_client=db_client)
         self.collection = self.db_client[DB_enums.COLLECTION_CHUNK_NAME.value]
 
-        async def create_chunk(self, chunk: data_chunk):
-            result = await self.collection.insert_one(chunk.model_dump())
-            chunk._id = result.inserted_id
-            return chunk
+    async def create_chunk(self, chunk: data_chunk):
+        result = await self.collection.insert_one(chunk.model_dump(by_alias=True, exclude_unset=True))
+        chunk._id = result.inserted_id
+        return chunk
         
-        async def get_chunk(self, chunk_id: str):
-            result = await self.collection.find_one({
-                "_id" : ObjectId(chunk_id)
-            })
+    async def get_chunk(self, chunk_id: str):
+        result = await self.collection.find_one({
+            "_id" : ObjectId(chunk_id)
+        })
 
-            if result is None : return None
+        if result is None : return None
 
-            return data_chunk(**result)
+        return data_chunk(**result)
         
-        async def insert_many_chunks(self, chunks: list, batch_size=100):
+    async def insert_many_chunks(self, chunks: list, batch_size=100):
 
-            for i in range(0, len(chunks), batch_size):
-                batch = chunks[i:i+batch_size]
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i:i+batch_size]
 
-                operations = [(
-                    InsertOne(chunk.model_dump()))
-                    for chunk in batch
-                ]
+            operations = [(
+                InsertOne(chunk.model_dump(by_alias=True, exclude_unset=True)))
+                for chunk in batch
+            ]
 
-                await self.collection.bulk_write(operations)
+            await self.collection.bulk_write(operations)
 
-            return len(chunks)
+        return len(chunks)
+    
+    async def delete_chunks_by_project_id(self, project_id: ObjectId):
+        result = await self.collection.delete_many({
+            "chunk_project_id": project_id
+        })
+        
+        return result.deleted_count
